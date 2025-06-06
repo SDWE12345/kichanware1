@@ -19,7 +19,7 @@ const Payments = () => {
     const [verifyingTimer, setVerifyingTimer] = useState(20); // 20s for verification
     const verifyingInterval = useRef(null);
     const verifyingTimerInterval = useRef(null);
-    const [doneData, setDoneData] = useState(null); // NEW: for localStorage done data
+    const [doneData, setDoneData] = useState(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -81,83 +81,80 @@ const Payments = () => {
         return () => clearInterval(timer);
     }, [time]);
 
-    useEffect(() => {
-        let name = "KHODIYAR ENTERPRISE"
-        const commonPhonePeParams = {
-            pa: products.upi,
-            pn: 'KHODIYAR ENTERPRISE',
-            mc: '',
-            tn: 'Verified Merchant',
-            am: total,
-            cu: 'INR',
-            url: '',
-            mode: '02',
-            orgid: '159012',
-            mid: '',
-            msid: '',
-            mtid: '',
-            sign: 'MEQCIB4NcyZl2FEuktegagtryRG1iA1XG9r3tMHCIGZmR0wQAiBPvbuBFfhZjmq3MKMKH/XouOPk2+STl/VwYQTg2Y7vWg=='
-        };
-
-        const buildPhonePeUrl = (params) => {
-            const queryString = Object.entries(params)
-                .filter(([_, value]) => value !== '')
-                .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-                .join('&');
-            return `phonepe://pay?${queryString}`;
-        };
-
-        let paymentUrl;
-        switch (activeTab) {
-            case 1: // BHIM
-                paymentUrl = `upi://pay?pa=${products.upi}&pn=${name}&am=${total}&cu=INR&tn=Payment`;
-                break;
-
-            case 2: // Google Pay
-                paymentUrl = `tez://upi/pay?pa=${products.upi}&pn=${name}&am=${total}&cu=INR&tn=Payment`;
-                break;
-
-            case 3: // PhonePe
-                paymentUrl = `phonepe://upi/pay?pa=${products.upi}&pn=${name}&am=${total}&cu=INR&tn=Payment`;
-                break;
-
-            case 4: // Paytm
-                paymentUrl = `paytmmp://cash_wallet?pa=${products.upi}&pn=${name}&mc=7692&tn=Payment&am=${total}`;
-                break;
-
-            case 5: // WhatsApp Pay
-                paymentUrl = `upi://pay?pa=${products.upi}&pn=${name}&am=${total}&cu=INR&tn=WhatsAppPay`;
-                break;
-
-            default:
-                paymentUrl = '';
-                break;
-        }
-        setPayment(paymentUrl);
-    }, [activeTab, products.upi, total]);
+  useEffect(() => {
+    const name = "KHODIYAR ENTERPRISE";
+    let paymentUrl;
+    
+    // Standard UPI payment link format that works with all UPI apps
+    paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
+    
+    // Optional: App-specific links if you want to try opening specific apps first
+    switch (activeTab) {
+        case 1: // BHIM
+            paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
+            break;
+        case 2: // Google Pay
+            paymentUrl = `tez://upi/pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+            break;
+        case 3: // PhonePe
+            paymentUrl = `phonepe://upi/pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+            break;
+        case 4: // Paytm
+            paymentUrl = `paytmmp://upi/pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+            break;
+        case 5: // WhatsApp Pay
+            paymentUrl = `whatsapp://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+            break;
+        default:
+            // Default to standard UPI link
+            paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
+            break;
+    }
+    
+    setPayment(paymentUrl);
+}, [activeTab, products.upi, total]);
 
     const minutes = Math.floor(time / 60);
     const seconds = time % 60;
 
-    // Show modal if done data exists in localStorage on mount
+    // Check localStorage on mount for existing verification state
     useEffect(() => {
-        const done = localStorage.getItem('paymentData');
-        if (done) {
-            setDoneData(JSON.parse(done));
-            setStatus('success');
-            setStatusMsg('Payment Successful! Thank you for your payment.');
+        const storedVerification = localStorage.getItem('paymentVerification');
+        if (storedVerification) {
+            const { status: storedStatus, orderId: storedOrderId, statusMsg: storedMsg } = JSON.parse(storedVerification);
+            setStatus(storedStatus);
+            setOrderId(storedOrderId);
+            setStatusMsg(storedMsg);
             setShowStatus(true);
+            
+            if (storedStatus === 'verifying') {
+                verifyPayment(storedOrderId);
+            }
         }
     }, []);
+
+    // Store verification state in localStorage
+    const updateVerificationState = (newStatus, newOrderId, newMsg) => {
+        const verificationState = {
+            status: newStatus,
+            orderId: newOrderId,
+            statusMsg: newMsg
+        };
+        localStorage.setItem('paymentVerification', JSON.stringify(verificationState));
+    };
 
     // --- Payment Verification Logic ---
     const verifyPayment = async (order_id) => {
         setStatus("verifying");
         setShowStatus(true);
         setVerifyingTimer(20);
+        setOrderId(order_id);
+        updateVerificationState("verifying", order_id, "Verifying payment...");
+
         let attempts = 0;
         const maxAttempts = 10; // 20s (2s interval)
         let lastErrorMsg = "";
+
         // Timer for bottom bar
         verifyingTimerInterval.current = setInterval(() => {
             setVerifyingTimer((prev) => {
@@ -168,6 +165,7 @@ const Payments = () => {
                 return prev - 1;
             });
         }, 1000);
+
         // Polling for payment status
         verifyingInterval.current = setInterval(async () => {
             attempts++;
@@ -178,6 +176,8 @@ const Payments = () => {
                     clearInterval(verifyingTimerInterval.current);
                     setStatus("success");
                     setStatusMsg("Payment Successful! Thank you for your payment.");
+                    updateVerificationState("success", order_id, "Payment Successful! Thank you for your payment.");
+                    
                     // Store payment data in localStorage
                     const paymentData = {
                         orderId: order_id,
@@ -204,6 +204,7 @@ const Payments = () => {
                 clearInterval(verifyingTimerInterval.current);
                 setStatus("failed");
                 setStatusMsg(lastErrorMsg);
+                updateVerificationState("failed", order_id, lastErrorMsg);
             }
         }, 2000);
     };
@@ -217,21 +218,13 @@ const Payments = () => {
     };
 
     // --- Cleanup on modal close ---
-    useEffect(() => {
-        if (!showStatus) {
-            clearInterval(verifyingInterval.current);
-            clearInterval(verifyingTimerInterval.current);
-            setVerifyingTimer(20);
-        }
-    }, [showStatus]);
-
-    // --- Handle closing modal after success ---
     const handleCloseModal = () => {
-        setShowStatus(false);
         if (status === 'success') {
+            localStorage.removeItem('paymentVerification');
             localStorage.removeItem('paymentData');
             setDoneData(null);
         }
+        setShowStatus(false);
     };
 
     // --- Payment Button Handler ---
@@ -241,8 +234,9 @@ const Payments = () => {
         setTimeout(() => {
             window.open(upiLink, '_blank');
             setLoader(false);
-            setOrderId(total);
-            verifyPayment(total);
+            const newOrderId = total;
+            setOrderId(newOrderId);
+            verifyPayment(newOrderId);
         }, 100);
     };
 
@@ -290,7 +284,7 @@ const Payments = () => {
                         }} onClick={handleRetry}>Retry</button>
                         <button style={{
                             background: "#fff", color: "#2874F0", border: "1px solid #2874F0", borderRadius: 8, padding: "10px 32px", fontWeight: 600, marginTop: 16, marginLeft: 8, cursor: "pointer"
-                        }} onClick={() => setShowStatus(false)}>Close</button>
+                        }} onClick={handleCloseModal}>Close</button>
                     </>
                 )}
             </div>
