@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiResponse = await fetch('https://new-ss-git-main-jjs-projects-1b78d7d6.vercel.app/api/verifypayment', {
+    const apiResponse = await fetch('https://new-ss-lake.vercel.app/api/verifyPayment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

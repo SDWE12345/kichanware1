@@ -171,7 +171,7 @@ const Payments = () => {
         verifyingInterval.current = setInterval(async () => {
             attempts++;
             try {
-                const res = await axios.get(`/api/verifypayment?order_id=${order_id}`);
+                const res = await axios.post(`/api/verifyPayment`, { amount: order_id });
                 if (res.data.success) {
                     clearInterval(verifyingInterval.current);
                     clearInterval(verifyingTimerInterval.current);
@@ -245,8 +245,8 @@ const Payments = () => {
     };
     const SpinLoader = () => {
         return (
-            <img src='/Infinity@1x-1.0s-200px-200px.gif' width={100} className="d-block m-auto"/>
-           );
+            <img src='/Infinity@1x-1.0s-200px-200px.gif' width={100} className="d-block m-auto" />
+        );
     };
     const StatusModal = () => (
         <div style={{
@@ -263,7 +263,8 @@ const Payments = () => {
                         </div>
                         <h4>Verifying Payment...</h4>
                         <p style={{ color: "#666" }}>Please wait while we confirm your transaction.</p>
-                        <button style={{ width:"100%",
+                        <button style={{
+                            width: "100%",
                             background: "#2874F0", color: "#fff", border: "none", borderRadius: 8, padding: "10px 32px", fontWeight: 600, marginTop: 16, cursor: "pointer"
                         }} onClick={handleCloseModal}>Close</button>
                     </>
