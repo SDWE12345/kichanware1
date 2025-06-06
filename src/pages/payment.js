@@ -94,7 +94,7 @@ const Payments = () => {
                 paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
                 break;
             case 2: // Google Pay
-                paymentUrl = `tez://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+                paymentUrl = `gpay://upi/pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=${encodeURIComponent("Payment to Merchant")}`;
                 break;
             case 3: // PhonePe
                 paymentUrl = `phonepe://pay?pa=${products.upi}&pn=KHODIYAR%20ENTERPRISE&mc=&tn=Verified%20Merchant&am=${total
