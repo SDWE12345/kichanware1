@@ -2157,8 +2157,6 @@ function Home() {
                   </div>
                 </div>
                 <img src={"/uploads/top-bg.a2aad345a2d903ce5659.jpg"} className="img-fluid" />
-              
-                <img className="mobi-only w-100" src="https://rukminim2.flixcart.com/fk-p-flap/800/311/image/f2422da39d7c3f73.jpg" />
                 <div className="_2rW-uM _3sgvr0 _1cVt6K _1CXxjX" >
                   <div className="_3LrtWH ">
                     <div className="_3QuZpZ dod-div">
