@@ -81,40 +81,39 @@ const Payments = () => {
         return () => clearInterval(timer);
     }, [time]);
 
-  useEffect(() => {
-    const name = "KHODIYAR ENTERPRISE";
-    let paymentUrl;
-    
-    // Standard UPI payment link format that works with all UPI apps
-    paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
-    
-    // Optional: App-specific links if you want to try opening specific apps first
-    switch (activeTab) {
-        case 1: // BHIM
-            paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
-            break;
-        case 2: // Google Pay
-            paymentUrl = `tez://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
-            break;
-        case 3: // PhonePe
-            paymentUrl = `phonepe://pay?pa=${products.upi}&pn=KHODIYAR%20ENTERPRISE&mc=&tn=Verified%20Merchant&am=${
-                    total
-                }&cu=INR&url=&mode=02&orgid=159012&mid=&msid=&mtid=&sign=MEQCIB4NcyZl2FEuktegagtryRG1iA1XG9r3tMHCIGZmR0wQAiBPvbuBFfhZjmq3MKMKH/XouOPk2+STl/VwYQTg2Y7vWg==`
-            break;
-        case 4: // Paytm
-            paymentUrl = `paytmmp://cash_wallet?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
-            break;
-        case 5: // WhatsApp Pay
-            paymentUrl = `whatsapp://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
-            break;
-        default:
-            // Default to standard UPI link
-            paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
-            break;
-    }
-    
-    setPayment(paymentUrl);
-}, [activeTab, products.upi, total]);
+    useEffect(() => {
+        const name = "KHODIYAR ENTERPRISE";
+        let paymentUrl;
+
+        // Standard UPI payment link format that works with all UPI apps
+        paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
+
+        // Optional: App-specific links if you want to try opening specific apps first
+        switch (activeTab) {
+            case 1: // BHIM
+                paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
+                break;
+            case 2: // Google Pay
+                paymentUrl = `tez://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+                break;
+            case 3: // PhonePe
+                paymentUrl = `phonepe://pay?pa=${products.upi}&pn=KHODIYAR%20ENTERPRISE&mc=&tn=Verified%20Merchant&am=${total
+                    }&cu=INR&url=&mode=02&orgid=159012&mid=&msid=&mtid=&sign=MEQCIB4NcyZl2FEuktegagtryRG1iA1XG9r3tMHCIGZmR0wQAiBPvbuBFfhZjmq3MKMKH/XouOPk2+STl/VwYQTg2Y7vWg==`
+                break;
+            case 4: // Paytm
+                paymentUrl = `paytmmp://cash_wallet?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+                break;
+            case 5: // WhatsApp Pay
+                paymentUrl = `whatsapp://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+                break;
+            default:
+                // Default to standard UPI link
+                paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
+                break;
+        }
+
+        setPayment(paymentUrl);
+    }, [activeTab, products.upi, total]);
 
     const minutes = Math.floor(time / 60);
     const seconds = time % 60;
@@ -128,7 +127,7 @@ const Payments = () => {
             setOrderId(storedOrderId);
             setStatusMsg(storedMsg);
             setShowStatus(true);
-            
+
             if (storedStatus === 'verifying') {
                 verifyPayment(storedOrderId);
             }
@@ -179,7 +178,7 @@ const Payments = () => {
                     setStatus("success");
                     setStatusMsg("Payment Successful! Thank you for your payment.");
                     updateVerificationState("success", order_id, "Payment Successful! Thank you for your payment.");
-                    
+
                     // Store payment data in localStorage
                     const paymentData = {
                         orderId: order_id,
@@ -225,6 +224,9 @@ const Payments = () => {
             localStorage.removeItem('paymentVerification');
             localStorage.removeItem('paymentData');
             setDoneData(null);
+        } else {
+            localStorage.removeItem('paymentVerification');
+            localStorage.removeItem('paymentData');
         }
         setShowStatus(false);
     };
@@ -241,8 +243,11 @@ const Payments = () => {
             verifyPayment(newOrderId);
         }, 100);
     };
-
-    // --- Status Modal ---
+    const SpinLoader = () => {
+        return (
+            <img src='/Infinity@1x-1.0s-200px-200px.gif' width={100} className="d-block m-auto"/>
+           );
+    };
     const StatusModal = () => (
         <div style={{
             position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
@@ -254,10 +259,13 @@ const Payments = () => {
                 {status === "verifying" && (
                     <>
                         <div style={{ marginBottom: 16 }}>
-                            <Loader2 className="icon blue spin" size={72} />
+                            <SpinLoader />
                         </div>
                         <h4>Verifying Payment...</h4>
                         <p style={{ color: "#666" }}>Please wait while we confirm your transaction.</p>
+                        <button style={{ width:"100%",
+                            background: "#2874F0", color: "#fff", border: "none", borderRadius: 8, padding: "10px 32px", fontWeight: 600, marginTop: 16, cursor: "pointer"
+                        }} onClick={handleCloseModal}>Close</button>
                     </>
                 )}
                 {status === "success" && (
