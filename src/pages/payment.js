@@ -94,13 +94,15 @@ const Payments = () => {
             paymentUrl = `upi://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR&tn=Payment`;
             break;
         case 2: // Google Pay
-            paymentUrl = `tez://upi/pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+            paymentUrl = `tez://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
             break;
         case 3: // PhonePe
-            paymentUrl = `phonepe://upi/pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+            paymentUrl = `phonepe://pay?pa=${products.upi}&pn=KHODIYAR%20ENTERPRISE&mc=&tn=Verified%20Merchant&am=${
+                    total
+                }&cu=INR&url=&mode=02&orgid=159012&mid=&msid=&mtid=&sign=MEQCIB4NcyZl2FEuktegagtryRG1iA1XG9r3tMHCIGZmR0wQAiBPvbuBFfhZjmq3MKMKH/XouOPk2+STl/VwYQTg2Y7vWg==`
             break;
         case 4: // Paytm
-            paymentUrl = `paytmmp://upi/pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+            paymentUrl = `paytmmp://cash_wallet?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
             break;
         case 5: // WhatsApp Pay
             paymentUrl = `whatsapp://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
