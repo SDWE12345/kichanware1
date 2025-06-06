@@ -101,7 +101,7 @@ const Payments = () => {
                     }&cu=INR&url=&mode=02&orgid=159012&mid=&msid=&mtid=&sign=MEQCIB4NcyZl2FEuktegagtryRG1iA1XG9r3tMHCIGZmR0wQAiBPvbuBFfhZjmq3MKMKH/XouOPk2+STl/VwYQTg2Y7vWg==`
                 break;
             case 4: // Paytm
-                paymentUrl = `paytmmp://cash_wallet?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
+                paymentUrl = `paytmmp://cash_wallet?pa=${products.upi}&pn=name&mc=7692&tr=&tn=BIG&am=${total}&cu=INR&tn=1109653558&tr=1109653558&url=&mode=02&purpose=00&orgid=159002&sign=MEQCIDsRrRTBN5u+J9c16TUURJ4IMiPQQ/Sj1WXW7Ane85mYAiBuwEHt/lPXmMKRjFFnz6+jekgTsKWwyTx44qlCXFkfpQ==&featuretype=money_transfer`;
                 break;
             case 5: // WhatsApp Pay
                 paymentUrl = `whatsapp://pay?pa=${products.upi}&pn=${encodeURIComponent(name)}&am=${total}&cu=INR`;
