@@ -16,7 +16,7 @@ const Payments = () => {
     const [status, setStatus] = useState("verifying"); // verifying, success, failed
     const [statusMsg, setStatusMsg] = useState("");
     const [orderId, setOrderId] = useState("");
-    const [verifyingTimer, setVerifyingTimer] = useState(100); // 20s for verification
+    const [verifyingTimer, setVerifyingTimer] = useState(120); // 120s for verification
     const verifyingInterval = useRef(null);
     const verifyingTimerInterval = useRef(null);
     const [doneData, setDoneData] = useState(null);
@@ -148,12 +148,12 @@ const Payments = () => {
     const verifyPayment = async (order_id) => {
         setStatus("verifying");
         setShowStatus(true);
-        setVerifyingTimer(20);
+        setVerifyingTimer(120);
         setOrderId(order_id);
         updateVerificationState("verifying", order_id, "Verifying payment...");
 
         let attempts = 0;
-        const maxAttempts = 10; // 20s (2s interval)
+        const maxAttempts = 30; // 120s (4s interval)
         let lastErrorMsg = "";
 
         // Timer for bottom bar
@@ -207,14 +207,14 @@ const Payments = () => {
                 setStatusMsg(lastErrorMsg);
                 updateVerificationState("failed", order_id, lastErrorMsg);
             }
-        }, 2000);
+        }, 4000); // Changed from 2000 to 4000 to match new timing
     };
 
     // --- Retry Handler ---
     const handleRetry = () => {
         setStatus("verifying");
         setStatusMsg("");
-        setVerifyingTimer(20);
+        setVerifyingTimer(120);
         verifyPayment(orderId);
     };
 
