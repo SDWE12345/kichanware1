@@ -16,7 +16,7 @@ const Payments = () => {
     const [status, setStatus] = useState("verifying"); // verifying, success, failed
     const [statusMsg, setStatusMsg] = useState("");
     const [orderId, setOrderId] = useState("");
-    const [verifyingTimer, setVerifyingTimer] = useState(20); // 20s for verification
+    const [verifyingTimer, setVerifyingTimer] = useState(100); // 20s for verification
     const verifyingInterval = useRef(null);
     const verifyingTimerInterval = useRef(null);
     const [doneData, setDoneData] = useState(null);
