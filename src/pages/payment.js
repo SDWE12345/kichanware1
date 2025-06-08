@@ -150,11 +150,13 @@ const Payments = () => {
         setShowStatus(true);
         setVerifyingTimer(120);
         setOrderId(order_id);
-        updateVerificationState("verifying", order_id, "Verifying payment...");
+        updateVerificationState("verifying", order_id, "Initializing payment verification...");
 
         let attempts = 0;
         const maxAttempts = 30; // 120s (4s interval)
         let lastErrorMsg = "";
+        let consecutiveErrors = 0;
+        const maxConsecutiveErrors = 30;
 
         // Timer for bottom bar
         verifyingTimerInterval.current = setInterval(() => {
@@ -171,58 +173,104 @@ const Payments = () => {
         verifyingInterval.current = setInterval(async () => {
             attempts++;
             try {
-                const res = await axios.post(`/api/verifyPayment`, { amount: order_id });
+                // Update status message based on attempt number
+                if (attempts === 5) {
+                    setStatusMsg("Checking payment status...");
+                } else if (attempts === 15) {
+                    setStatusMsg("Still verifying payment...");
+                } else if (attempts === 30) {
+                    setStatusMsg("Payment verification in progress...");
+                }
+
+                const res = await axios.post(`/api/verifyPayment`, {
+                    amount: order_id,
+                    attempt: attempts,
+                    timestamp: new Date().toISOString()
+                });
+
                 if (res.data.success) {
                     clearInterval(verifyingInterval.current);
                     clearInterval(verifyingTimerInterval.current);
                     setStatus("success");
                     setStatusMsg("Payment Successful! Thank you for your payment.");
                     updateVerificationState("success", order_id, "Payment Successful! Thank you for your payment.");
-
-                    // Store payment data in localStorage
+                    const url = `/payment-success/?order_id=` + res.data.order.amount;
+                    router.push(url);
+                    // Store payment data in localStorage with additional metadata
                     const paymentData = {
                         orderId: order_id,
                         amount: res.data.order.amount,
                         date: res.data.order.date,
                         paymentMethod: res.data.order.paymentMethod,
-                        referenceId: res.data.order.referenceId
+                        referenceId: res.data.order.referenceId,
+                        verificationTime: new Date().toISOString(),
+                        attempts: attempts,
+                        status: 'success'
                     };
                     localStorage.setItem('paymentData', JSON.stringify(paymentData));
                     setDoneData(paymentData);
                     return;
                 } else {
-                    lastErrorMsg = res.data.message || "Payment not found or timed out. Please try again.";
+                    consecutiveErrors++;
+                    lastErrorMsg = res.data.message || "Payment verification in progress...";
+
+                    // If we get too many consecutive errors, fail early
+                    if (consecutiveErrors >= maxConsecutiveErrors) {
+                        throw new Error("Multiple verification failures detected");
+                    }
                 }
             } catch (err) {
+                consecutiveErrors++;
                 if (err.response?.data?.message) {
                     lastErrorMsg = err.response.data.message;
+                } else if (err.message === "Multiple verification failures detected") {
+                    lastErrorMsg = "Payment verification failed due to multiple errors. Please try again.";
                 } else {
                     lastErrorMsg = "Error verifying payment. Please try again.";
                 }
+
+                // If we get too many consecutive errors, fail early
+                if (consecutiveErrors >= maxConsecutiveErrors) {
+                    clearInterval(verifyingInterval.current);
+                    clearInterval(verifyingTimerInterval.current);
+                    setStatus("failed");
+                    setStatusMsg(lastErrorMsg);
+                    updateVerificationState("failed", order_id, lastErrorMsg);
+                    return;
+                }
             }
+
             if (attempts >= maxAttempts) {
                 clearInterval(verifyingInterval.current);
                 clearInterval(verifyingTimerInterval.current);
                 setStatus("failed");
-                setStatusMsg(lastErrorMsg);
-                updateVerificationState("failed", order_id, lastErrorMsg);
+                setStatusMsg(lastErrorMsg || "Payment verification timed out. Please try again.");
+                updateVerificationState("failed", order_id, lastErrorMsg || "Payment verification timed out. Please try again.");
             }
-        }, 4000); // Changed from 2000 to 4000 to match new timing
+        }, 4000);
     };
 
     // --- Retry Handler ---
     const handleRetry = () => {
+        // Clear any existing intervals
+        if (verifyingInterval.current) clearInterval(verifyingInterval.current);
+        if (verifyingTimerInterval.current) clearInterval(verifyingTimerInterval.current);
+
         setStatus("verifying");
-        setStatusMsg("");
+        setStatusMsg("Retrying payment verification...");
         setVerifyingTimer(120);
         verifyPayment(orderId);
     };
 
     // --- Cleanup on modal close ---
     const handleCloseModal = () => {
+        // Clear any existing intervals
+        if (verifyingInterval.current) clearInterval(verifyingInterval.current);
+        if (verifyingTimerInterval.current) clearInterval(verifyingTimerInterval.current);
+
         if (status === 'success') {
             localStorage.removeItem('paymentVerification');
-            localStorage.removeItem('paymentData');
+            // Keep paymentData for successful payments
             setDoneData(null);
         } else {
             localStorage.removeItem('paymentVerification');
