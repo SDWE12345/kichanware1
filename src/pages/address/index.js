@@ -1,5 +1,4 @@
 "use client";
-import { FbPixelEvents, initFacebookPixel } from "@/lib/facebookPixel";
 import { useFormik } from "formik";
 import { useRouter } from "next/router";
 const Address = () => {
@@ -20,7 +19,6 @@ const Address = () => {
                 name: values.fname,
                 phone: Number(values.mobile),
             }))
-            FbPixelEvents.addToCart(values);
             router.push("/ordersummdary");
         },
     });

@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { load } from '@cashfreepayments/cashfree-js'
 import axios from "axios";
-import { FbPixelEvents, initFacebookPixel } from "@/lib/facebookPixel";
 
 const Ordersummary = () => {
   const router = useRouter();
@@ -11,7 +10,6 @@ const Ordersummary = () => {
   const [data, setdata] = useState({})
 
   useEffect(() => {
-    FbPixelEvents.PurchaseView();
   }, []);
   useEffect(() => {
     // This code will run on the client side

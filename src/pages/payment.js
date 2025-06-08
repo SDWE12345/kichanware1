@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useState, useEffect, useRef } from "react";
 import "./payment.module.css"
 import { Loader2 } from "lucide-react";
+import { FbPixelEvents } from "@/lib/facebookPixel";
 const Payments = () => {
     const [products, setProducts] = useState({ upi: "", Gpay: true });
     const [loader, setLoader] = useState(false);
@@ -153,10 +154,8 @@ const Payments = () => {
         updateVerificationState("verifying", order_id, "Initializing payment verification...");
 
         let attempts = 0;
-        const maxAttempts = 30; // 120s (4s interval)
+        const maxAttempts = 4; // Only try 4 times (every 4s = 16s total)
         let lastErrorMsg = "";
-        let consecutiveErrors = 0;
-        const maxConsecutiveErrors = 30;
 
         // Timer for bottom bar
         verifyingTimerInterval.current = setInterval(() => {
@@ -174,11 +173,11 @@ const Payments = () => {
             attempts++;
             try {
                 // Update status message based on attempt number
-                if (attempts === 5) {
+                if (attempts === 2) {
                     setStatusMsg("Checking payment status...");
-                } else if (attempts === 15) {
+                } else if (attempts === 3) {
                     setStatusMsg("Still verifying payment...");
-                } else if (attempts === 30) {
+                } else if (attempts === 4) {
                     setStatusMsg("Payment verification in progress...");
                 }
 
@@ -187,16 +186,7 @@ const Payments = () => {
                     attempt: attempts,
                     timestamp: new Date().toISOString()
                 });
-
-                if (res.data.success) {
-                    clearInterval(verifyingInterval.current);
-                    clearInterval(verifyingTimerInterval.current);
-                    setStatus("success");
-                    setStatusMsg("Payment Successful! Thank you for your payment.");
-                    updateVerificationState("success", order_id, "Payment Successful! Thank you for your payment.");
-                    const url = `/payment-success/?order_id=` + res.data.order.amount;
-                    router.push(url);
-                    // Store payment data in localStorage with additional metadata
+                if (res.data.success === true) {
                     const paymentData = {
                         orderId: order_id,
                         amount: res.data.order.amount,
@@ -207,39 +197,38 @@ const Payments = () => {
                         attempts: attempts,
                         status: 'success'
                     };
+                    FbPixelEvents.purchaseStatus(paymentData)
+                    clearInterval(verifyingInterval.current);
+                    clearInterval(verifyingTimerInterval.current);
+                    setStatus("success");
+                    setStatusMsg("Payment Successful! Thank you for your payment.");
+                    updateVerificationState("success", order_id, "Payment Successful! Thank you for your payment.");
+                    // Store payment data in localStorage with additional metadata
+
+                    setTimeout(() => {
+                        const url = `/payment-success/?order_id=${res.data.order.amount}`;
+                        try {
+                            router.push(url);
+                        } catch (e) {
+                            window.location.href = url;
+                        }
+                    }, 1200);
                     localStorage.setItem('paymentData', JSON.stringify(paymentData));
                     setDoneData(paymentData);
+
                     return;
                 } else {
-                    consecutiveErrors++;
                     lastErrorMsg = res.data.message || "Payment verification in progress...";
-
-                    // If we get too many consecutive errors, fail early
-                    if (consecutiveErrors >= maxConsecutiveErrors) {
-                        throw new Error("Multiple verification failures detected");
-                    }
                 }
             } catch (err) {
-                consecutiveErrors++;
                 if (err.response?.data?.message) {
                     lastErrorMsg = err.response.data.message;
-                } else if (err.message === "Multiple verification failures detected") {
-                    lastErrorMsg = "Payment verification failed due to multiple errors. Please try again.";
                 } else {
                     lastErrorMsg = "Error verifying payment. Please try again.";
                 }
-
-                // If we get too many consecutive errors, fail early
-                if (consecutiveErrors >= maxConsecutiveErrors) {
-                    clearInterval(verifyingInterval.current);
-                    clearInterval(verifyingTimerInterval.current);
-                    setStatus("failed");
-                    setStatusMsg(lastErrorMsg);
-                    updateVerificationState("failed", order_id, lastErrorMsg);
-                    return;
-                }
             }
 
+            // If max attempts reached, stop polling and show failure
             if (attempts >= maxAttempts) {
                 clearInterval(verifyingInterval.current);
                 clearInterval(verifyingTimerInterval.current);
@@ -281,6 +270,8 @@ const Payments = () => {
 
     // --- Payment Button Handler ---
     const handleUPIRedirect = () => {
+        let products = JSON.parse(localStorage.getItem("d1"))
+        FbPixelEvents.initiateCheckout([products], total);
         setLoader(true);
         const upiLink = payment.trim();
         setTimeout(() => {
