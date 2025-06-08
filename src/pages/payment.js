@@ -22,6 +22,18 @@ const Payments = () => {
     const verifyingTimerInterval = useRef(null);
     const [doneData, setDoneData] = useState(null);
     const router = useRouter();
+    useEffect(() => {
+        if (status == "success") {
+            setTimeout(() => {
+                const url = `/payment-success/?order_id=${orderId}`;
+                try {
+                    router.push(url);
+                } catch (e) {
+                    window.location.href = url;
+                }
+            }, 1200);
+        }
+    }, [status])
 
     useEffect(() => {
         fetchProducts();
@@ -136,17 +148,18 @@ const Payments = () => {
     }, []);
 
     // Store verification state in localStorage
-    const updateVerificationState = (newStatus, newOrderId, newMsg) => {
+    const updateVerificationState = (id, newStatus, newOrderId, newMsg) => {
         const verificationState = {
+            id: id,
             status: newStatus,
             orderId: newOrderId,
             statusMsg: newMsg
         };
         localStorage.setItem('paymentVerification', JSON.stringify(verificationState));
     };
-
-    // --- Payment Verification Logic ---
     const verifyPayment = async (order_id) => {
+        if (!order_id) return;
+
         setStatus("verifying");
         setShowStatus(true);
         setVerifyingTimer(120);
@@ -154,10 +167,10 @@ const Payments = () => {
         updateVerificationState("verifying", order_id, "Initializing payment verification...");
 
         let attempts = 0;
-        const maxAttempts = 4; // Only try 4 times (every 4s = 16s total)
+        const maxAttempts = 25;
         let lastErrorMsg = "";
+        let isVerified = false;
 
-        // Timer for bottom bar
         verifyingTimerInterval.current = setInterval(() => {
             setVerifyingTimer((prev) => {
                 if (prev <= 1) {
@@ -168,76 +181,72 @@ const Payments = () => {
             });
         }, 1000);
 
-        // Polling for payment status
         verifyingInterval.current = setInterval(async () => {
-            attempts++;
+            if (isVerified) return; // Guard: if already verified, do nothing
+
             try {
-                // Update status message based on attempt number
-                if (attempts === 2) {
-                    setStatusMsg("Checking payment status...");
-                } else if (attempts === 3) {
-                    setStatusMsg("Still verifying payment...");
-                } else if (attempts === 4) {
-                    setStatusMsg("Payment verification in progress...");
-                }
+                if (attempts === 2) setStatusMsg("Checking payment status...");
+                else if (attempts === 3) setStatusMsg("Still verifying payment...");
+                else if (attempts === 4) setStatusMsg("Payment verification in progress...");
 
                 const res = await axios.post(`/api/verifyPayment`, {
                     amount: order_id,
                     attempt: attempts,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
                 });
-                if (res.data.success === true) {
+                console.log("res.data.success", res.data.success);
+                if (res.data.success) {
+
+                }
+                if (res.data.success === true && !isVerified) {
+                    isVerified = true;
+
+                    console.log("res.11111", res.data.success);
                     const paymentData = {
-                        orderId: order_id,
-                        amount: res.data.order.amount,
-                        date: res.data.order.date,
-                        paymentMethod: res.data.order.paymentMethod,
-                        referenceId: res.data.order.referenceId,
+                        orderId: res.data.id,
+                        amount: res.data.amount,
+                        paymentMethod: "upi netbanking",
+                        referenceId: null,
                         verificationTime: new Date().toISOString(),
                         attempts: attempts,
-                        status: 'success'
+                        status: 'success',
                     };
-                    FbPixelEvents.purchaseStatus(paymentData)
-                    clearInterval(verifyingInterval.current);
-                    clearInterval(verifyingTimerInterval.current);
-                    setStatus("success");
-                    setStatusMsg("Payment Successful! Thank you for your payment.");
-                    updateVerificationState("success", order_id, "Payment Successful! Thank you for your payment.");
-                    // Store payment data in localStorage with additional metadata
+                    console.log("res.11111", res.data.success);
 
-                    setTimeout(() => {
-                        const url = `/payment-success/?order_id=${res.data.order.amount}`;
-                        try {
-                            router.push(url);
-                        } catch (e) {
-                            window.location.href = url;
-                        }
-                    }, 1200);
+                    // Store only once
                     localStorage.setItem('paymentData', JSON.stringify(paymentData));
                     setDoneData(paymentData);
 
+                    console.log("res.111", res.data.success);
+
+                    // Clear timers
+                    clearInterval(verifyingInterval.current);
+                    clearInterval(verifyingTimerInterval.current);
+
+                    console.log("res.2222", res.data.success);
+                    setStatus("success");
+                    setStatusMsg("Payment Successful! Thank you for your payment.");
+                    updateVerificationState(res.data.id, "success", order_id, "Payment Successful! Thank you for your payment.");
                     return;
                 } else {
                     lastErrorMsg = res.data.message || "Payment verification in progress...";
                 }
             } catch (err) {
-                if (err.response?.data?.message) {
-                    lastErrorMsg = err.response.data.message;
-                } else {
-                    lastErrorMsg = "Error verifying payment. Please try again.";
-                }
+                lastErrorMsg = err?.response?.data?.message || "Error verifying payment. Please try again.";
             }
 
-            // If max attempts reached, stop polling and show failure
-            if (attempts >= maxAttempts) {
+            // Stop if max attempts reached
+            if (attempts >= maxAttempts && !isVerified) {
                 clearInterval(verifyingInterval.current);
                 clearInterval(verifyingTimerInterval.current);
+
                 setStatus("failed");
                 setStatusMsg(lastErrorMsg || "Payment verification timed out. Please try again.");
                 updateVerificationState("failed", order_id, lastErrorMsg || "Payment verification timed out. Please try again.");
             }
         }, 4000);
     };
+
 
     // --- Retry Handler ---
     const handleRetry = () => {
@@ -271,7 +280,6 @@ const Payments = () => {
     // --- Payment Button Handler ---
     const handleUPIRedirect = () => {
         let products = JSON.parse(localStorage.getItem("d1"))
-        FbPixelEvents.initiateCheckout([products], total);
         setLoader(true);
         const upiLink = payment.trim();
         setTimeout(() => {

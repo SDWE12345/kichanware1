@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
 import Head from 'next/head';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { FbPixelEvents, initFacebookPixel } from '@/lib/facebookPixel';
@@ -8,79 +7,45 @@ import { FbPixelEvents, initFacebookPixel } from '@/lib/facebookPixel';
 const PaymentSuccess = () => {
   const router = useRouter();
   const { order_id } = router.query;
+  const [orderId, setOrderId] = useState('');
 
   const [status, setStatus] = useState('verifying'); // 'verifying', 'success', 'failed'
-  const [order, setOrder] = useState(null);
   const [data123, setData] = useState({});
   const [error, setError] = useState('');
 
   useEffect(() => {
-    initFacebookPixel();
-  }, []);
+    initFacebookPixel(); // Initialize pixel
 
-  useEffect(() => {
-    if (!order_id) return;
-    const verified_data = JSON.parse(localStorage.getItem(`data123`));
-
-    const verified = localStorage.getItem(`verified_${order_id}`);
-    if (verified === 'true') {
-      setStatus('success')
-      setData(verified_data);
-      verifyPayment(); // get full details
+    const data = localStorage.getItem('paymentVerification');
+    if (!data) {
+      setStatus('failed');
+      setError('No payment data found.');
       return;
     }
 
-    let interval;
-    let timeout;
+    const parsedData = JSON.parse(data);
+    setData(parsedData);
 
-    const checkPayment = async () => {
-      try {
-        const res = await axios.post('/api/verifyPayment', {
-          amount: Number(order_id),
-        });
+    // 1 second verifying animation
+    setTimeout(() => {
+      setStatus('success');
+    }, 1000);
+  }, []);
+  
+  useEffect(() => {
+    let storedOrderId = localStorage.getItem('generatedOrderId');
 
-        if (res.data.success) {
-          localStorage.setItem(`verified_${order_id}`, 'true');
-          clearInterval(interval);
-          clearTimeout(timeout);
-          setStatus('success');
-          verifyPayment();
-        } else {
-          console.log('Still waiting...');
-        }
-      } catch (err) {
-        console.error('Error while checking payment:', err);
-      }
-    };
-
-    interval = setInterval(checkPayment, 2000);
-
-    timeout = setTimeout(() => {
-      clearInterval(interval);
-      setStatus('failed');
-      setError('Payment not found or timed out. Please try again.');
-    }, 30000); // stop checking after 1 minute
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, [order_id]);
-
-  const verifyPayment = async () => {
-    try {
-      const res = await axios.post('/api/verifyPayment', {
-        amount: Number(order_id),
-      });
-
-      if (res.data.success) {
-        setData(res.data.data);
-        localStorage.setItem("data123", JSON.stringify(res.data.data))
-        setOrder(res.data.order || {});
-      }
-    } catch (err) {
-      console.error('Error during verifyPayment:', err);
+    if (!storedOrderId) {
+      const newOrderId = generateOrderId();
+      localStorage.setItem('generatedOrderId', newOrderId);
+      storedOrderId = newOrderId;
     }
+
+    setOrderId(storedOrderId);
+  }, []);
+
+  const generateOrderId = () => {
+    return Math.floor(1000000000 + Math.random() * 9000000000).toString();
   };
 
   return (
@@ -108,27 +73,22 @@ const PaymentSuccess = () => {
           {status === 'success' && (
             <>
               <h2 className="mb-3 text-success text-center">Payment Successful</h2>
-              <p className="text-muted text-center mb-4">Thank you for your payment!</p>
+              <p className="text-muted text-center mb-4">{data123.statusMsg}</p>
 
               <div className="card bg-light mb-4 mx-auto" style={{ maxWidth: '400px' }}>
                 <div className="card-body">
-                  <p className="mb-2 justify-content-between d-flex"><strong>Order ID:</strong> {data123 && data123.id}</p>
-                  <p className="mb-2  justify-content-between d-flex"><strong>Amount Paid:</strong> ₹ {order_id}</p>
-                  <p className="mb-0  justify-content-between d-flex"><strong>Date:</strong> {new Date().toLocaleString()}</p>
+                  <p className="mb-2 justify-content-between d-flex"><strong>Order ID:</strong> {orderId}</p>
+                  <p className="mb-2 justify-content-between d-flex"><strong>Amount Paid:</strong> ₹ {data123?.orderId}</p>
+                  <p className="mb-2 justify-content-between d-flex"><strong>Reference ID:</strong> {data123?.referenceId || 'N/A'}</p>
+                  <p className="mb-0 justify-content-between d-flex"><strong>Date:</strong> {new Date().toLocaleString()}</p>
                 </div>
               </div>
 
               <div className="d-flex justify-content-center gap-3 flex-wrap">
-                <button
-                  className="btn btn-primary px-4"
-                  onClick={() => router.push('/')}
-                >
+                <button className="btn btn-primary px-4" onClick={() => router.push('/')}>
                   View Orders
                 </button>
-                <button
-                  className="btn btn-outline-primary px-4"
-                  onClick={() => router.push('/')}
-                >
+                <button className="btn btn-outline-primary px-4" onClick={() => router.push('/')}>
                   Back to Home
                 </button>
               </div>
@@ -202,20 +162,6 @@ const PaymentSuccess = () => {
           margin-bottom: 1.5rem;
         }
 
-        .details {
-          text-align: left;
-          background: #f9fafb;
-          padding: 1rem;
-          border-radius: 10px;
-          margin-bottom: 1.5rem;
-          font-size: 0.95rem;
-          color: #374151;
-        }
-
-        .details p {
-          margin: 0.3rem 0;
-        }
-
         .btn-group {
           display: flex;
           justify-content: center;
@@ -248,10 +194,6 @@ const PaymentSuccess = () => {
 
         .shake {
           animation: shake 0.5s ease-in-out;
-        }
-
-        .fade-in {
-          animation: fadeIn 0.8s ease-in;
         }
 
         @keyframes spin {
